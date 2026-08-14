@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 const quickQueries = [["Болит колено", "травматолог · УЗИ · реабилитация"], ["Кашель не проходит", "Белугина · спирометрия · красные флаги"], ["Не могу похудеть", "Черткова · анализы · лечение веса"], ["Хочу капельницу", "Садык · персональная схема · безопасность"], ["Кружится голова", "невролог · вопросы · диагностика"], ["После операции", "команда из 4 специалистов · реабилитация"], ["Давление скачет", "кардиолог · СМАД · ЭХОКГ"], ["Онемели пальцы", "невролог · УЗИ нерва · маршрутизация"]];
-const api = (path) => fetch(`/api${path}`).then((r) => { if (!r.ok) throw new Error("API error"); return r.json(); });
+const apiBase = import.meta.env.VITE_API_URL || "/api";
+const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const api = (path) => fetch(`${apiBase}${path}`, { headers: apiKey ? { apikey: apiKey } : {} }).then((r) => { if (!r.ok) throw new Error("API error"); return r.json(); });
 
 export default function App() {
   const [cards, setCards] = useState([]); const [modules, setModules] = useState([]); const [query, setQuery] = useState("");

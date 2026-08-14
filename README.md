@@ -25,3 +25,26 @@ curl -X POST http://localhost:8000/admin/import \
 ```
 
 Основные read endpoints: `GET /health`, `GET /modules`, `GET /cards`, `GET /cards/{id}`, `GET /search?q=колено`.
+
+## Supabase Edge Functions
+
+Для облачного варианта API доступна Edge Function `knowledge-api`. SQL-схема, RLS-политики и индексы находятся в `supabase/migrations`; чтение открыто только с publishable key, импорт требует secret key.
+
+После авторизации в Supabase и привязки проекта:
+
+```bash
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+supabase functions deploy knowledge-api --use-api
+```
+
+Заполните базу через облачный endpoint, используя secret key (никогда не добавляйте его в frontend):
+
+```bash
+curl -X POST 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/knowledge-api/admin/import' \
+  -H 'apikey: YOUR_SECRET_KEY' \
+  -H 'Content-Type: application/json' \
+  --data-binary @db.json
+```
+
+Для отдельного static-хостинга React скопируйте `frontend/.env.example` в `.env` и задайте URL Edge Function и publishable key при сборке.
