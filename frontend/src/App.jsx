@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 const apiBase = import.meta.env.VITE_API_URL || "/api";
 const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const api = (path) => fetch(`${apiBase}${path}`, { headers: apiKey ? { apikey: apiKey } : {} }).then((response) => {
-  if (!response.ok) throw new Error("API error");
-  return response.json();
-});
+const api = (path) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  return fetch(`${apiBase}${path}`, { headers: apiKey ? { apikey: apiKey } : {}, signal: controller.signal }).then((response) => {
+    if (!response.ok) throw new Error("API error");
+    return response.json();
+  }).finally(() => clearTimeout(timeout));
+};
 
 const workflows = [
   ["Записать пациента", "Подобрать врача, время или лист ожидания", "запись", "◫"],
@@ -25,6 +29,7 @@ export default function App() {
   const [view, setView] = useState("home");
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [favorites, setFavorites] = useState(() => new Set(JSON.parse(localStorage.getItem("gci_favorites") || "[]")));
   const [error, setError] = useState("");
 
@@ -37,11 +42,11 @@ export default function App() {
         const path = query.trim() ? `/search?q=${encodeURIComponent(query)}${module ? `&module=${encodeURIComponent(module)}` : ""}` : `/cards?limit=200${module ? `&module=${encodeURIComponent(module)}` : ""}`;
         const data = await api(path);
         setCards(data.results);
-      } catch { setError("Не удалось получить данные. Проверьте подключение к базе знаний."); }
+      } catch { setError("База знаний временно не отвечает. Проверьте подключение и повторите попытку."); }
       finally { setLoading(false); }
     }, 180);
     return () => clearTimeout(timer);
-  }, [query, module, view]);
+  }, [query, module, view, retryKey]);
 
   const kinds = useMemo(() => ["Все", ...new Set(cards.map((card) => card.kind).filter(Boolean))], [cards]);
   const visible = useMemo(() => cards.filter((card) => (kind === "Все" || card.kind === kind) && (view !== "favorites" || favorites.has(card.id))), [cards, kind, view, favorites]);
@@ -65,7 +70,7 @@ export default function App() {
     </aside>
     <section className="content">
       <div className="topbar"><div className="searchbox"><span className="search-icon">⌕</span><input value={query} onChange={(event) => { setView("results"); setModule(""); setKind("Все"); setQuery(event.target.value); }} placeholder="Например: «анализ на герпес», «дорого», «мама просит результаты»" /><button className="search-clear" onClick={clear}>Очистить</button></div></div>
-      <main className="main">{view === "home" ? <Home onWorkflow={runWorkflow} onLibrary={showLibrary} /> : <Results title={title} cards={visible} kinds={kinds} kind={kind} setKind={setKind} loading={loading} error={error} favorites={favorites} onFavorite={toggleFavorite} onOpen={setCurrent} />}</main>
+      <main className="main">{view === "home" ? <Home onWorkflow={runWorkflow} onLibrary={showLibrary} /> : <Results title={title} cards={visible} kinds={kinds} kind={kind} setKind={setKind} loading={loading} error={error} favorites={favorites} onFavorite={toggleFavorite} onOpen={setCurrent} onRetry={() => setRetryKey((value) => value + 1)} />}</main>
     </section>
     {current && <Drawer card={current} favorite={favorites.has(current.id)} onFavorite={() => toggleFavorite(current.id)} onClose={() => setCurrent(null)} />}
   </div>;
@@ -79,8 +84,8 @@ function Home({ onWorkflow, onLibrary }) {
   </>;
 }
 
-function Results({ title, cards, kinds, kind, setKind, loading, error, favorites, onFavorite, onOpen }) {
-  return <><div className="results-intro"><span className="eyebrow">База знаний</span><p>Сначала — краткая карточка, затем подробности по кнопке «Открыть».</p></div><div className="toolbar"><h2>{title} <span>· {loading ? "…" : cards.length}</span></h2><div className="chips">{kinds.map((item) => <button key={item} className={`chip ${kind === item ? "active" : ""}`} onClick={() => setKind(item)}>{item}</button>)}</div></div><section className="results">{loading ? <div className="empty">Ищу в базе знаний…</div> : error ? <div className="empty">{error}</div> : cards.length ? cards.slice(0, 80).map((card) => <Card key={card.id} card={card} favorite={favorites.has(card.id)} onFavorite={() => onFavorite(card.id)} onOpen={() => onOpen(card)} />) : <div className="empty">Ничего не найдено. Попробуйте коротко: «герпес», «дорого», «перенос» или выберите ситуацию на главной.</div>}</section></>;
+function Results({ title, cards, kinds, kind, setKind, loading, error, favorites, onFavorite, onOpen, onRetry }) {
+  return <><div className="results-intro"><span className="eyebrow">База знаний</span><p>Сначала — краткая карточка, затем подробности по кнопке «Открыть».</p></div><div className="toolbar"><h2>{title} <span>· {loading ? "…" : cards.length}</span></h2><div className="chips">{kinds.map((item) => <button key={item} className={`chip ${kind === item ? "active" : ""}`} onClick={() => setKind(item)}>{item}</button>)}</div></div><section className="results">{loading ? <div className="empty">Ищу в базе знаний…</div> : error ? <div className="empty">{error}<div className="card-actions"><button className="smallbtn primary" onClick={onRetry}>Повторить</button></div></div> : cards.length ? cards.slice(0, 80).map((card) => <Card key={card.id} card={card} favorite={favorites.has(card.id)} onFavorite={() => onFavorite(card.id)} onOpen={() => onOpen(card)} />) : <div className="empty">Ничего не найдено. Попробуйте коротко: «герпес», «дорого», «перенос» или выберите ситуацию на главной.</div>}</section></>;
 }
 
 function Nav({ active, onClick, label, value }) { return <button className={`navbtn ${active ? "active" : ""}`} onClick={onClick}><span>{label}</span><span>{value}</span></button>; }
