@@ -56,7 +56,7 @@ export default function App() {
 
   return <div className="shell">
     <aside className="sidebar">
-      <button className="brand" onClick={clear} aria-label="На главную"><div className="logo">G</div><div><b>Green Clinic</b><small>Intelligence</small></div></button>
+      <button className="brand" onClick={clear} aria-label="На главную"><div className="logo"><img src="/green-clinic-logo.jpg" alt="Green Clinic" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "14px" }} /></div><div><b>Green Clinic</b><small>Intelligence</small></div></button>
       <div className="side-title">Рабочее пространство</div>
       <Nav active={view === "home"} onClick={clear} label="Пациент сейчас" value="⌂" />
       <Nav active={view === "library" && !module} onClick={showLibrary} label="Библиотека знаний" value={libraryCount || "…"} />
