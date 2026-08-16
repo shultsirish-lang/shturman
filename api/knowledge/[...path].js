@@ -4,7 +4,7 @@ export default async function handler(request, response) {
   const path = Array.isArray(request.query.path) ? request.query.path.join("/") : (request.query.path || "");
   const query = new URLSearchParams(request.query);
   query.delete("path");
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || request.headers.apikey;
 
   try {
     const upstreamResponse = await fetch(`${upstream}/${path}${query.toString() ? `?${query}` : ""}`, {
