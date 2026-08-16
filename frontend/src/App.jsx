@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const apiBase = import.meta.env.VITE_API_URL || "/api";
+const apiBase = import.meta.env.PROD ? "/api/knowledge" : (import.meta.env.VITE_API_URL || "/api");
 const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const api = (path) => {
   const controller = new AbortController();
