@@ -26,6 +26,16 @@ curl -X POST http://localhost:8000/admin/import \
 
 Основные read endpoints: `GET /health`, `GET /modules`, `GET /cards`, `GET /cards/{id}`, `GET /search?q=колено`.
 
+## Каталог лабораторных исследований
+
+Для массовых справочников предусмотрена отдельная таблица `lab_catalog_items`: она хранит код, название, специальность, темы и источник, а не заменяет проверенные сценарные карточки. После применения миграций извлекайте PDF в reviewable JSON:
+
+```bash
+python scripts/extract_helix_catalog.py /path/to/helix-pdfs --output /tmp/helix-catalog.json
+```
+
+Проверьте статистику, дубли и примеры запросов; импортируйте пакет только после явного согласования. Публичный поиск `/search?q=целиакия` объединяет сценарные карточки и элементы каталога. Для отладки каталога есть `GET /lab-catalog`.
+
 ## Supabase Edge Functions
 
 Для облачного варианта API доступна Edge Function `knowledge-api`. SQL-схема, RLS-политики и индексы находятся в `supabase/migrations`; чтение открыто только с publishable key, импорт требует secret key.
