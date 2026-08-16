@@ -61,8 +61,7 @@ export default function App() {
       <Nav active={view === "home"} onClick={clear} label="Пациент сейчас" value="⌂" />
       <Nav active={view === "library" && !module} onClick={showLibrary} label="Библиотека знаний" value={libraryCount || "…"} />
       <Nav active={view === "favorites"} onClick={openFavorites} label="Избранное" value={favorites.size} />
-      <div className="side-title">Направления</div>
-      <div className="module-list">{modules.map((item) => <Nav key={item.module} active={module === item.module} onClick={() => chooseModule(item.module)} label={item.module} value={item.count} />)}</div>
+      {view === "library" && <><div className="side-title">Направления</div><div className="module-list">{modules.map((item) => <Nav key={item.module} active={module === item.module} onClick={() => chooseModule(item.module)} label={item.module} value={item.count} />)}</div></>}
     </aside>
     <section className="content">
       <div className="topbar"><div className="searchbox"><span className="search-icon">⌕</span><input value={query} onChange={(event) => { setView("results"); setModule(""); setKind("Все"); setQuery(event.target.value); }} placeholder="Например: «анализ на герпес», «дорого», «мама просит результаты»" /><button className="search-clear" onClick={clear}>Очистить</button></div></div>
