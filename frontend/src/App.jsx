@@ -60,7 +60,7 @@ export default function App() {
   const visible = useMemo(() => cards.filter((card) => (
     (kind === "Все" || card.kind === kind)
     && (view !== "favorites" || favorites.has(card.id))
-    && (card.module !== "Лабораторные анализы" || Boolean(card.price))
+    && (card.kind !== "Лабораторное исследование" || Boolean(card.price))
   )), [cards, kind, view, favorites]);
   const libraryCount = modules.reduce((total, item) => total + item.count, 0);
   const toggleFavorite = (id) => { const next = new Set(favorites); next.has(id) ? next.delete(id) : next.add(id); setFavorites(next); localStorage.setItem("gci_favorites", JSON.stringify([...next])); };
@@ -112,13 +112,29 @@ function methodOf(card) {
   return "Согласно названию исследования";
 }
 function Card({ card, onOpen }) {
-  const isLab = card.module === "Лабораторные анализы";
+  const isLab = card.kind === "Лабораторное исследование";
   return <article className="card" onClick={onOpen} role="button" tabIndex="0" onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}>
     <h3>{card.title}</h3>
     {isLab ? <div className="analysis-summary"><div><b>Метод:</b> {methodOf(card)}</div><div><b>Артикул:</b> {card.green_clinic_code || card.code}</div><div><b>Цена:</b> {card.price}</div></div> : <p>{card.quick}</p>}
   </article>;
 }
 function Drawer({ card, onClose }) {
-  const isLab = card.module === "Лабораторные анализы";
-  return <div className="drawer open"><div className="shade" onClick={onClose} /><article className="sheet"><header className="sheet-head"><h2>{card.title}</h2><button className="close" onClick={onClose}>✕</button></header><div className="sheet-body">{isLab ? <><div className="info"><b>Метод:</b> {methodOf(card)}</div><div className="info"><b>Артикул:</b> {card.green_clinic_code || card.code}</div><div className="info"><b>Цена:</b> {card.price}</div><div className="info"><b>Тип биоматериала:</b> {card.biomaterial || "Уточняется"}</div><div className="info"><b>Подготовка:</b> {card.prep || "Уточняется"}</div><div className="info"><b>Срок выполнения:</b> {card.duration || "Уточняется"}</div></> : <div className="answer">{card.patient_answer || card.quick}</div>}</div></article></div>;
+  const isLab = card.kind === "Лабораторное исследование";
+  return <div className="drawer open"><div className="shade" onClick={onClose} /><article className="sheet"><header className="sheet-head"><h2>{card.title}</h2><button className="close" onClick={onClose}>✕</button></header><div className="sheet-body">{isLab ? <><div className="info"><b>Метод:</b> {methodOf(card)}</div><div className="info"><b>Артикул:</b> {card.green_clinic_code || card.code}</div><div className="info"><b>Цена:</b> {card.price}</div><div className="info"><b>Тип биоматериала:</b> {card.biomaterial || "Уточняется"}</div><div className="info"><b>Подготовка:</b> {card.prep || "Уточняется"}</div><div className="info"><b>Срок выполнения:</b> {card.duration || "Уточняется"}</div></> : <KnowledgeDrawer card={card} />}</div></article></div>;
+}
+
+function KnowledgeDrawer({ card }) {
+  const sections = Array.isArray(card.sections) ? card.sections : [];
+  return <>
+    <div className="answer">{card.patient_answer || card.quick}</div>
+    {sections.map((section, index) => <section className="knowledge-section" key={`${section.heading}-${index}`}>
+      <h3>{section.heading}</h3>
+      {section.text && <p>{section.text}</p>}
+      {section.what && <p><b>Что это:</b> {section.what}</p>}
+      {section.say && <p><b>Как сказать пациенту:</b> «{section.say}»</p>}
+      {section.remember && <p><b>Важно:</b> {section.remember}</p>}
+      {section.pronunciation?.length ? <ul>{section.pronunciation.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+    </section>)}
+    {card.dont?.length ? <section className="knowledge-section"><h3>Не говорить</h3><ul>{card.dont.map((item) => <li key={item}>{item}</li>)}</ul></section> : null}
+  </>;
 }
