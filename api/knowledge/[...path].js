@@ -1,6 +1,22 @@
 const upstream = "https://osgkrmppcbusxweffrvs.supabase.co/functions/v1/knowledge-api";
 
 export default async function handler(request, response) {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "apikey, content-type",
+  };
+  const setCorsHeaders = () => Object.entries(corsHeaders).forEach(([name, value]) => response.setHeader(name, value));
+  if (request.method === "OPTIONS") {
+    setCorsHeaders();
+    response.status(204).end();
+    return;
+  }
+  if (request.method !== "GET") {
+    setCorsHeaders();
+    response.status(405).json({ detail: "Read-only API: GET requests only" });
+    return;
+  }
   // Vercel does not consistently expose a catch-all segment in request.query
   // for this route. Deriving it from the URL keeps /search, /cards etc. intact.
   const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
@@ -27,10 +43,12 @@ export default async function handler(request, response) {
     }
     if (!upstreamResponse) throw new Error("Upstream unavailable");
     response.status(upstreamResponse.status);
+    setCorsHeaders();
     response.setHeader("Content-Type", upstreamResponse.headers.get("content-type") || "application/json");
     response.setHeader("Cache-Control", "no-store");
     response.send(await upstreamResponse.text());
   } catch {
+    setCorsHeaders();
     response.status(503).json({ detail: "Knowledge API is temporarily unavailable" });
   }
 }

@@ -1,5 +1,9 @@
 # Green Clinic Intelligence
 
+Рабочий интерфейс: <https://green-clinic-intelligence-green-clinic.vercel.app/>
+
+Интеграция с Клиентикс: [docs/clientix-api.md](docs/clientix-api.md).
+
 Полный стек: React + FastAPI + PostgreSQL, запускаемый в Docker.
 
 ```bash
