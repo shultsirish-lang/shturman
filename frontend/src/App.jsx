@@ -2,13 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 
 const apiBase = import.meta.env.PROD ? "/api/knowledge" : (import.meta.env.VITE_API_URL || "/api");
 const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const api = (path) => {
+const api = async (path) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
-  return fetch(`${apiBase}${path}`, { headers: apiKey ? { apikey: apiKey } : {}, signal: controller.signal }).then((response) => {
+  const cacheKey = `gci_api_${path}`;
+  try {
+    const response = await fetch(`${apiBase}${path}`, { headers: apiKey ? { apikey: apiKey } : {}, signal: controller.signal });
     if (!response.ok) throw new Error("API error");
-    return response.json();
-  }).finally(() => clearTimeout(timeout));
+    const payload = await response.json();
+    localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), payload }));
+    return payload;
+  } catch (error) {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+    if (cached?.payload && Date.now() - cached.savedAt < 24 * 60 * 60 * 1000) return cached.payload;
+    throw error;
+  } finally { clearTimeout(timeout); }
 };
 
 const workflows = [

@@ -12,10 +12,20 @@ export default async function handler(request, response) {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || request.headers.apikey;
 
   try {
-    const upstreamResponse = await fetch(`${upstream}/${path}${query.toString() ? `?${query}` : ""}`, {
-      headers: key ? { apikey: key } : {},
-      signal: AbortSignal.timeout(15000),
-    });
+    let upstreamResponse;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        upstreamResponse = await fetch(`${upstream}/${path}${query.toString() ? `?${query}` : ""}`, {
+          headers: key ? { apikey: key } : {},
+          signal: AbortSignal.timeout(12000),
+        });
+        if (upstreamResponse.status < 500) break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+    }
+    if (!upstreamResponse) throw new Error("Upstream unavailable");
     response.status(upstreamResponse.status);
     response.setHeader("Content-Type", upstreamResponse.headers.get("content-type") || "application/json");
     response.setHeader("Cache-Control", "no-store");
