@@ -102,6 +102,7 @@ function Results({ title, cards, kinds, kind, setKind, loading, error, favorites
 
 function Nav({ active, onClick, label, value }) { return <button className={`navbtn ${active ? "active" : ""}`} onClick={onClick}><span>{label}</span><span>{value}</span></button>; }
 function methodOf(card) {
+  if (card.method) return card.method;
   const text = card.title.toLowerCase();
   if (text.includes("пцр")) return "ПЦР";
   if (text.includes("иммуноблот")) return "Иммуноблот";

@@ -15,7 +15,7 @@ export default {
     const path = url.pathname.replace(/^.*\/knowledge-api/, "") || "/";
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 80), 1), 200);
     const selectColumns = "id,module,kind,title,quick,patient_answer,urgency,data,updated_at";
-    const catalogColumns = "id,provider,code,title,specialty,topics,keywords,source_name,source_version,source_pages,green_clinic_code,price_rub,biomaterial,material,duration,updated_at";
+    const catalogColumns = "id,provider,code,title,specialty,topics,keywords,source_name,source_version,source_pages,green_clinic_code,price_rub,method,biomaterial,prep,material,duration,updated_at";
     const searchStopWords = new Set([
       "анализ", "анализы", "сдать", "сдайте", "сдача", "на", "в", "во", "по", "для", "и", "или", "к", "о", "от", "из",
       "кровь", "крови", "моча", "мочи", "мазок", "мазка", "тест", "теста",
@@ -36,8 +36,9 @@ export default {
       code: row.green_clinic_code ?? row.code,
       green_clinic_code: row.green_clinic_code ?? row.code,
       price: row.price_rub ? `${row.price_rub} ₽` : "",
+      method: row.method ?? "",
       biomaterial: row.biomaterial ?? "",
-      prep: row.material ?? "",
+      prep: row.prep ?? row.material ?? "",
       duration: row.duration ?? "",
       keywords: [row.title, row.code, row.specialty, ...((row.topics as string[]) ?? []), ...((row.keywords as string[]) ?? [])].filter(Boolean),
       source: `${row.source_name}${row.source_version ? `, версия ${row.source_version}` : ""}`,
@@ -133,7 +134,8 @@ export default {
         id: item.id, provider: item.provider ?? "Helix", code: item.code, title: item.title,
         specialty: item.specialty ?? "", topics: item.topics ?? [], keywords: item.keywords ?? [], source_name: item.source_name ?? "",
         source_version: item.source_version ?? "", source_pages: item.source_pages ?? [], green_clinic_code: item.green_clinic_code ?? null,
-        price_rub: item.price_rub ?? null, biomaterial: item.biomaterial ?? null, material: item.material ?? null, duration: item.duration ?? null, updated_at: new Date().toISOString(),
+        price_rub: item.price_rub ?? null, method: item.method ?? null, biomaterial: item.biomaterial ?? null,
+        prep: item.prep ?? null, material: item.material ?? null, duration: item.duration ?? null, updated_at: new Date().toISOString(),
       }));
       if (rows.some((row: Record<string, unknown>) => !row.id || !row.code || !row.title)) return json({ detail: "Every item requires id, code, and title" }, 422);
       const { error } = await ctx.supabaseAdmin.from("lab_catalog_items").upsert(rows, { onConflict: "id" });
