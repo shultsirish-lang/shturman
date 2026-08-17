@@ -1,9 +1,14 @@
 const upstream = "https://osgkrmppcbusxweffrvs.supabase.co/functions/v1/knowledge-api";
 
 export default async function handler(request, response) {
-  const path = Array.isArray(request.query.path) ? request.query.path.join("/") : (request.query.path || "");
-  const query = new URLSearchParams(request.query);
-  query.delete("path");
+  // Vercel does not consistently expose a catch-all segment in request.query
+  // for this route. Deriving it from the URL keeps /search, /cards etc. intact.
+  const url = new URL(request.url, `https://${request.headers.host || "localhost"}`);
+  const routePrefix = "/api/knowledge/";
+  const path = url.pathname.startsWith(routePrefix)
+    ? decodeURIComponent(url.pathname.slice(routePrefix.length))
+    : "";
+  const query = url.searchParams;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || request.headers.apikey;
 
   try {
