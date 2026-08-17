@@ -49,7 +49,11 @@ export default function App() {
   }, [query, module, view, retryKey]);
 
   const kinds = useMemo(() => ["Все", ...new Set(cards.map((card) => card.kind).filter(Boolean))], [cards]);
-  const visible = useMemo(() => cards.filter((card) => (kind === "Все" || card.kind === kind) && (view !== "favorites" || favorites.has(card.id))), [cards, kind, view, favorites]);
+  const visible = useMemo(() => cards.filter((card) => (
+    (kind === "Все" || card.kind === kind)
+    && (view !== "favorites" || favorites.has(card.id))
+    && (card.module !== "Лабораторные анализы" || Boolean(card.price))
+  )), [cards, kind, view, favorites]);
   const libraryCount = modules.reduce((total, item) => total + item.count, 0);
   const toggleFavorite = (id) => { const next = new Set(favorites); next.has(id) ? next.delete(id) : next.add(id); setFavorites(next); localStorage.setItem("gci_favorites", JSON.stringify([...next])); };
   const showLibrary = () => { setView("library"); setQuery(""); setModule(""); setKind("Все"); };
@@ -72,7 +76,7 @@ export default function App() {
       <div className="topbar"><div className="searchbox"><span className="search-icon">⌕</span><input value={query} onChange={(event) => { setView("results"); setModule(""); setKind("Все"); setQuery(event.target.value); }} placeholder="Например: «анализ на герпес», «дорого», «мама просит результаты»" /><button className="search-clear" onClick={clear}>Очистить</button></div></div>
       <main className="main">{view === "home" ? <Home onWorkflow={runWorkflow} onLibrary={showLibrary} /> : <Results title={title} cards={visible} kinds={kinds} kind={kind} setKind={setKind} loading={loading} error={error} favorites={favorites} onFavorite={toggleFavorite} onOpen={setCurrent} onRetry={() => setRetryKey((value) => value + 1)} />}</main>
     </section>
-    {current && <Drawer card={current} favorite={favorites.has(current.id)} onFavorite={() => toggleFavorite(current.id)} onClose={() => setCurrent(null)} />}
+    {current && <Drawer card={current} onClose={() => setCurrent(null)} />}
   </div>;
 }
 
@@ -89,6 +93,24 @@ function Results({ title, cards, kinds, kind, setKind, loading, error, favorites
 }
 
 function Nav({ active, onClick, label, value }) { return <button className={`navbtn ${active ? "active" : ""}`} onClick={onClick}><span>{label}</span><span>{value}</span></button>; }
-function Card({ card, favorite, onFavorite, onOpen }) { const red = card.urgency === "Красная"; return <article className="card" onClick={onOpen}><button className={`fav ${favorite ? "on" : ""}`} onClick={(event) => { event.stopPropagation(); onFavorite(); }}>{favorite ? "★" : "☆"}</button><div className="meta">{card.module} · {card.kind} · {card.id}</div><h3>{card.title}</h3><p>{card.quick}</p>{(red || card.urgency === "Оранжевая") && <div className={`flag ${red ? "red" : "orange"}`}>● {red ? "Красный флаг" : "Повышенное внимание"}</div>}<div className="tags">{(card.keywords || []).slice(0, 5).map((tag) => <span className="tag" key={tag}>{tag}</span>)}</div><div className="card-actions"><button className="smallbtn primary" onClick={(event) => { event.stopPropagation(); onOpen(); }}>Открыть</button><button className="smallbtn" onClick={(event) => { event.stopPropagation(); navigator.clipboard.writeText(card.quick); }}>Копировать</button></div></article>; }
-function Drawer({ card, favorite, onFavorite, onClose }) { const infos = [["Артикул Green Clinic", card.green_clinic_code || card.code], ["Стоимость", card.price], ["Подготовка", card.prep], ["Длительность", card.duration], ["Специалист", card.doctor]].filter(([, value]) => value); return <div className="drawer open"><div className="shade" onClick={onClose} /><article className="sheet"><header className="sheet-head"><div className="meta">{card.module} · {card.kind} · {card.id}</div><h2>{card.title}</h2><button className="close" onClick={onClose}>✕</button></header><div className="sheet-body"><h4>Готовый ответ пациенту</h4><div className="answer">{card.patient_answer || card.quick}</div>{infos.map(([name, value]) => <div className="info" key={name}><b>{name}:</b> {value}</div>)}<Info title="Что уточнить" items={card.ask} fallback="Дополнительные вопросы не указаны." /><Info title="Что нельзя говорить" items={card.dont} fallback="Соблюдать общий стандарт общения Green Clinic." warning /><Info title="Следующий шаг" items={[card.next]} fallback="Подобрать запись по ситуации." /></div><div className="sheet-actions"><button className="action" onClick={onFavorite}>{favorite ? "★ В избранном" : "☆ В избранное"}</button><button className="action primary" onClick={() => navigator.clipboard.writeText(card.patient_answer || card.quick)}>Скопировать ответ</button></div></article></div>; }
-function Info({ title, items = [], fallback, warning }) { return <div className={`block ${warning ? "warning" : ""}`}><h4>{title}</h4><ul>{(items.filter(Boolean).length ? items.filter(Boolean) : [fallback]).map((item) => <li key={item}>{item}</li>)}</ul></div>; }
+function methodOf(card) {
+  const text = card.title.toLowerCase();
+  if (text.includes("пцр")) return "ПЦР";
+  if (text.includes("иммуноблот")) return "Иммуноблот";
+  if (text.includes("иммунофлюоресценц")) return "Иммунофлюоресценция";
+  if (text.includes("иммунокэп") || text.includes("immunocap")) return "ИммуноКЭП";
+  if (text.includes("igg")) return "Определение антител IgG";
+  if (text.includes("igm")) return "Определение антител IgM";
+  return "Согласно названию исследования";
+}
+function Card({ card, onOpen }) {
+  const isLab = card.module === "Лабораторные анализы";
+  return <article className="card" onClick={onOpen} role="button" tabIndex="0" onKeyDown={(event) => { if (event.key === "Enter") onOpen(); }}>
+    <h3>{card.title}</h3>
+    {isLab ? <div className="analysis-summary"><div><b>Метод:</b> {methodOf(card)}</div><div><b>Артикул:</b> {card.green_clinic_code || card.code}</div><div><b>Цена:</b> {card.price}</div></div> : <p>{card.quick}</p>}
+  </article>;
+}
+function Drawer({ card, onClose }) {
+  const isLab = card.module === "Лабораторные анализы";
+  return <div className="drawer open"><div className="shade" onClick={onClose} /><article className="sheet"><header className="sheet-head"><h2>{card.title}</h2><button className="close" onClick={onClose}>✕</button></header><div className="sheet-body">{isLab ? <><div className="info"><b>Метод:</b> {methodOf(card)}</div><div className="info"><b>Артикул:</b> {card.green_clinic_code || card.code}</div><div className="info"><b>Цена:</b> {card.price}</div><div className="info"><b>Подготовка:</b> {card.prep || "Уточняется"}</div><div className="info"><b>Срок выполнения:</b> {card.duration || "Уточняется"}</div></> : <div className="answer">{card.patient_answer || card.quick}</div>}</div></article></div>;
+}
